@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import db from "../configs/database.ts";
 import handleLogin from "./login.ts";
 import handleRegister from "./register.ts";
 
@@ -6,8 +6,6 @@ type Message = {
   command: string;
   body: Object;
 };
-
-const db = new Database("./db.sqlite3");
 
 async function handleMessage(message: Message): Promise<object> {
   switch (message.command) {
