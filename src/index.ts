@@ -1,32 +1,14 @@
-import net, { Socket } from "net";
+import { Socket, createServer } from "net";
 
 import handleMessage from "./routes/index.ts";
+import { addMessageEvent } from "./utils/handleMessage.ts";
 
-function handleMessagePart(socket: Socket, part: string) {
-  try {
-    const msg = JSON.parse(part);
-    console.log("Received:", msg);
-
-    handleMessage(msg).then((response) => {
-      socket.write(JSON.stringify(response) + "\n");
-    });
-  } catch {
-    console.error("Invalid JSON:", part);
-  }
-}
-
-const server = net.createServer((socket: Socket) => {
+const server = createServer((socket: Socket) => {
   console.log("Client connected:", socket.remoteAddress, socket.remotePort);
 
-  let buffer = "";
-
-  socket.on("data", (data: Buffer) => {
-    buffer += data.toString();
-
-    let parts = buffer.split("\n");
-    buffer = parts.pop() || "";
-
-    parts.forEach((part) => handleMessagePart(socket, part));
+  addMessageEvent(socket, async (message) => {
+    const response = await handleMessage(message);
+    socket.write(JSON.stringify(response) + "\n");
   });
 
   socket.on("end", () => {

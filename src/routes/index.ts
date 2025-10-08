@@ -1,11 +1,7 @@
 import db from "../configs/database.ts";
+import type { Message } from "../schemas.ts";
 import handleLogin from "./login.ts";
 import handleRegister from "./register.ts";
-
-type Message = {
-  command: string;
-  body: Object;
-};
 
 async function handleMessage(message: Message): Promise<object> {
   switch (message.command) {

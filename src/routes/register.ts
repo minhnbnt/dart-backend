@@ -2,13 +2,12 @@ import argon2 from "argon2";
 import * as z from "zod";
 
 import { type Database } from "better-sqlite3";
+import type { RegisterPayload } from "../schemas.ts";
 
 const registerSchema = z.object({
   username: z.string().min(8),
   password: z.string().min(8),
 });
-
-type RegisterPayload = z.infer<typeof registerSchema>;
 
 async function registerUser(db: Database, payload: RegisterPayload) {
   const { username, password } = payload;
@@ -29,6 +28,7 @@ async function registerUser(db: Database, payload: RegisterPayload) {
     if ((err as any)?.code === "SQLITE_CONSTRAINT_UNIQUE") {
       return { ok: false, message: "Username already exists" };
     }
+
     throw err;
   }
 }
