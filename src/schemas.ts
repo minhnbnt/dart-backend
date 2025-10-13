@@ -1,6 +1,7 @@
 import * as z from "zod";
 
 export const messageSchema = z.object({
+  id: z.uuid(),
   command: z.string().nonempty(),
   body: z.any(),
 });

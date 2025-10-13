@@ -41,7 +41,9 @@ async function handleRegister(db: Database, payload: object) {
     if (error instanceof z.ZodError) {
       return {
         ok: false,
-        message: `Validation error: ${error.message}`,
+        message: `Validation error.`,
+
+        detail: JSON.parse(error.message),
       };
     }
 

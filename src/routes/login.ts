@@ -19,12 +19,16 @@ async function handleLogin(db: Database, payload: object) {
     let token = `${username}:${password}`;
     token = Buffer.from(token, "utf8").toString("base64");
 
-    return { ok: true, body: { token } };
+    return {
+      ok: true,
+      body: { username, token },
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
         ok: false,
-        message: `Validation error: ${error.message}`,
+        message: `Validation error`,
+        detail: JSON.parse(error.message),
       };
     }
 

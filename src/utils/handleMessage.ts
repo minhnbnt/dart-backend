@@ -28,6 +28,7 @@ export function addMessageEvent(socket: Socket, callback: Callback) {
       });
 
       socket.write(message + "\n");
+      return;
     }
 
     console.log("Received:", message);
