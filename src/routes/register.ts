@@ -1,13 +1,11 @@
 import argon2 from "argon2";
-import * as z from "zod";
 
 import { type Database } from "better-sqlite3";
-import type { RegisterPayload } from "../schemas.ts";
+import { registerSchema, type RegisterPayload } from "../schemas.ts";
 
-const registerSchema = z.object({
-  username: z.string().min(8),
-  password: z.string().min(8),
-});
+function isUsernameExists(err: any) {
+  return err?.code === "SQLITE_CONSTRAINT_UNIQUE";
+}
 
 async function registerUser(db: Database, payload: RegisterPayload) {
   const { username, password } = payload;
@@ -25,7 +23,7 @@ async function registerUser(db: Database, payload: RegisterPayload) {
       body: { userID: info.lastInsertRowid },
     };
   } catch (err) {
-    if ((err as any)?.code === "SQLITE_CONSTRAINT_UNIQUE") {
+    if (isUsernameExists(err)) {
       return { ok: false, message: "Username already exists" };
     }
 
@@ -33,22 +31,7 @@ async function registerUser(db: Database, payload: RegisterPayload) {
   }
 }
 
-async function handleRegister(db: Database, payload: object) {
-  try {
-    const parsed = registerSchema.parse(payload);
-    return await registerUser(db, parsed);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        ok: false,
-        message: `Validation error.`,
-
-        detail: JSON.parse(error.message),
-      };
-    }
-
-    throw error;
-  }
+export default async function handleRegister(db: Database, payload: object) {
+  const parsed = registerSchema.parse(payload);
+  return await registerUser(db, parsed);
 }
-
-export default handleRegister;

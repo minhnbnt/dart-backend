@@ -49,7 +49,7 @@ async function getBasicTokenIssuer(db: Database, tokenValue: string) {
   }
 }
 
-export async function getTokenIssuer(db: Database, token: string) {
+export async function checkToken(db: Database, token: string) {
   const tokens = token.split(" ");
   if (tokens.length !== 2) {
     return false;

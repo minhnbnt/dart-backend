@@ -19,17 +19,7 @@ export function addMessageEvent(socket: Socket, callback: Callback) {
       return;
     }
 
-    try {
-      message = messageSchema.parse(message);
-    } catch (e) {
-      const message = JSON.stringify({
-        ok: false,
-        message: `Invalid Message: ${part}`,
-      });
-
-      socket.write(message + "\n");
-      return;
-    }
+    message = messageSchema.parse(message);
 
     console.log("Received:", message);
     callback(message as Message);

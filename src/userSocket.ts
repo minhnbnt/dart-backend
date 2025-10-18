@@ -1,47 +1,59 @@
 import type { Socket } from "net";
+import { ZodError } from "zod";
+
 import { addMessageEvent } from "./utils/handleMessage.ts";
 import handleCommand from "./routes/index.ts";
+import { onLoginSuccess, onUserLogout } from "./service/socketMap.ts";
+import type { Message } from "./schemas.ts";
 
-const socketMap = new Map<string, Socket>();
+function addSocketIfLoginSuccess(
+  socket: Socket,
+  request: Message,
+  { ok }: { ok: boolean },
+) {
+  if (request.command !== "login") {
+    return;
+  }
 
-export function listOnlineUser() {
-  return socketMap.keys();
+  const username = request.body?.username;
+  if (username !== undefined && ok) {
+    onLoginSuccess(username, socket);
+  }
 }
 
-function onLoginSuccess(username: string, socket: Socket) {
-  const message = {
-    type: "event",
-    body: { event: "newUser", username },
-  };
+async function handleMessage(
+  socket: Socket,
+  message: Message,
+  username?: string,
+) {
+  try {
+    const response = await handleCommand(message, username);
+    addSocketIfLoginSuccess(socket, message, response);
+    socket.write(JSON.stringify(response) + "\n");
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return {
+        ok: false,
+        message: `Validation error.`,
 
-  socketMap.forEach((socket) => {
-    socket.write(JSON.stringify(message));
-    socket.write("\n");
-  });
+        detail: JSON.parse(error.message),
+      };
+    }
 
-  socketMap.set(username, socket);
+    throw error;
+  }
 }
 
 export function handleSocket(socket: Socket) {
-  let username: string | null = null;
+  let username: string | undefined;
 
-  addMessageEvent(socket, async (message) => {
-    const response = await handleCommand(message);
-    socket.write(JSON.stringify(response) + "\n");
-
-    const isLoginSuccess = message.command === "login" && response.ok === true;
-
-    if (isLoginSuccess) {
-      const responseAny = response as any;
-      username = responseAny.body.username as string;
-
-      onLoginSuccess(username, socket);
-    }
+  addMessageEvent(socket, (message) => {
+    handleMessage(socket, message, username);
   });
 
   socket.on("close", () => {
-    if (username !== null) {
-      socketMap.delete(username);
+    if (username !== undefined) {
+      onUserLogout(username);
       console.log(`Client ${username} disconnected.`);
     } else {
       console.log("Client disconnected.");

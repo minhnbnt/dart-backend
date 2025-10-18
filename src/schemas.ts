@@ -11,6 +11,15 @@ export const loginSchema = z.object({
   password: z.string().min(8),
 });
 
+export const challengeSchema = z.object({
+  to: z.string().min(8),
+});
+
+export const challengeAnswerSchema = z.object({
+  challengeId: z.int(),
+  newStatus: z.enum(["accepted", "declined"]),
+});
+
 export const registerSchema = loginSchema;
 
 export type Message = z.infer<typeof messageSchema>;
