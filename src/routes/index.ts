@@ -31,7 +31,7 @@ async function handleCommand({ command, body }: Message, username?: string) {
     }
 
     case "listOnline": {
-      return { ok: true, body: listOnlineUser() };
+      return { ok: true, body: listOnlineUser().toArray() };
     }
   }
 
@@ -42,7 +42,7 @@ async function handleCommand({ command, body }: Message, username?: string) {
 }
 
 async function handleMessage(message: Message, username?: string) {
-  const response = (await handleCommand(message, username)) as any;
+  const response: any = await handleCommand(message, username);
   response.id = message.id;
 
   return response;
