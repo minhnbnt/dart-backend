@@ -41,7 +41,7 @@ export function sendChallenge(db: Database, from: string, message: object) {
   if (isSelfChallenge) {
     return {
       ok: false,
-      body: { message: "You can't send a challenge to yourself." },
+      message: "You can't send a challenge to yourself.",
     };
   }
 
@@ -51,7 +51,7 @@ export function sendChallenge(db: Database, from: string, message: object) {
   if (!isOnline) {
     return {
       ok: false,
-      body: { message: `"${to}" is not online right now.` },
+      message: `"${to}" is not online right now.`,
     };
   }
 

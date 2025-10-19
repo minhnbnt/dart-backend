@@ -6,30 +6,13 @@ import handleCommand from "./routes/index.ts";
 import { onLoginSuccess, onUserLogout } from "./service/socketMap.ts";
 import type { Message } from "./schemas.ts";
 
-function addSocketIfLoginSuccess(
-  socket: Socket,
-  request: Message,
-  { ok }: { ok: boolean },
-) {
-  if (request.command !== "login") {
-    return;
-  }
-
-  const username = request.body?.username;
-  if (username !== undefined && ok) {
-    onLoginSuccess(username, socket);
-  }
-}
-
 async function handleMessage(
   socket: Socket,
   message: Message,
   username?: string,
 ) {
   try {
-    const response = await handleCommand(message, username);
-    addSocketIfLoginSuccess(socket, message, response);
-    socket.write(JSON.stringify(response) + "\n");
+    return await handleCommand(message, username);
   } catch (error) {
     if (error instanceof ZodError) {
       return {
@@ -47,8 +30,18 @@ async function handleMessage(
 export function handleSocket(socket: Socket) {
   let username: string | undefined;
 
-  addMessageEvent(socket, (message) => {
-    handleMessage(socket, message, username);
+  addMessageEvent(socket, async (message) => {
+    const response = await handleMessage(socket, message, username);
+    const isLoginSuccess = message.command === "login" && response.ok;
+
+    if (isLoginSuccess) {
+      const { username: requestUsername } = message.body as any;
+      username = requestUsername as string;
+
+      onLoginSuccess(username, socket);
+    }
+
+    socket.write(JSON.stringify(response) + "\n");
   });
 
   socket.on("close", () => {

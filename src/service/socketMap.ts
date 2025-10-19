@@ -26,7 +26,7 @@ export function onLoginSuccess(username: string, socket: Socket) {
 }
 
 export function listOnlineUser() {
-  return socketMap.keys();
+  return socketMap.keys().map((username) => ({ username }));
 }
 
 export function onUserLogout(username: string) {
