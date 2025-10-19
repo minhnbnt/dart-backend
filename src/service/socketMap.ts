@@ -29,6 +29,10 @@ export function listOnlineUser() {
   return socketMap.keys().map((username) => ({ username }));
 }
 
+export function isUserOnline(username: string) {
+  return socketMap.has(username);
+}
+
 export function onUserLogout(username: string) {
   socketMap.delete(username);
 
