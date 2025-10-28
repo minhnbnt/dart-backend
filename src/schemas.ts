@@ -1,23 +1,23 @@
-import * as z from "zod";
+import * as z from 'zod';
 
 export const messageSchema = z.object({
-  id: z.uuid(),
-  command: z.string().nonempty(),
-  body: z.any(),
+	id: z.uuid(),
+	command: z.string().nonempty(),
+	body: z.any(),
 });
 
 export const loginSchema = z.object({
-  username: z.string().min(8),
-  password: z.string().min(8),
+	username: z.string().min(8),
+	password: z.string().min(8),
 });
 
 export const challengeSchema = z.object({
-  to: z.string().min(8),
+	to: z.string().min(8),
 });
 
 export const challengeAnswerSchema = z.object({
-  challengeId: z.int(),
-  newStatus: z.enum(["accepted", "declined"]),
+	challengeId: z.int(),
+	newStatus: z.enum(['accepted', 'declined']),
 });
 
 export const registerSchema = loginSchema;

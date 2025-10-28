@@ -1,3 +1,3 @@
-import { Socket } from "net";
+import { Socket } from 'net';
 
 const map = new Map<string, Socket>();
