@@ -38,6 +38,7 @@ export function onUserLogout(username: string) {
 
   // TODO: Check if is in match
   // TODO: Update last online
+  // TODO: Denice all pending request
 
   const message = { event: "userOffline", body: { username } };
   sendToAll(message);

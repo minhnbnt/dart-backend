@@ -5,6 +5,7 @@ import { getSocketFromUsername } from "../service/socketMap.ts";
 import {
   checkCanAnswer,
   insertChallenge,
+  onChallengeAccepted,
   updateChallenge,
 } from "../service/challenges.ts";
 
@@ -12,8 +13,11 @@ export function answerChallenge(db: Database, username: string, body: object) {
   const { challengeId, newStatus } = challengeAnswerSchema.parse(body);
 
   try {
-    checkCanAnswer(db, username, challengeId);
+    const challenge = checkCanAnswer(db, username, challengeId);
     updateChallenge(db, challengeId, newStatus);
+    if (newStatus === "accepted") {
+      onChallengeAccepted(challenge);
+    }
   } catch (err) {
     if (
       err instanceof Error &&
