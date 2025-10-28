@@ -12,10 +12,8 @@ function insertChallenge(db: Database, from: string, to: string) {
   const query = `
     INSERT INTO invitation (from_id, to_id, status)
     SELECT u1.id, u2.id, 'pending'
-    FROM users AS u1
-    JOIN users AS u2
-      ON u1.username = ?
-     AND u2.username = ?;
+    FROM users AS u1, users AS u2
+    WHERE u1.username = ? AND u2.username = ?;
   `;
 
   const result = db.prepare(query).run(from, to);
@@ -27,10 +25,10 @@ function checkCanAnswer(db: Database, username: string, challengeId: number) {
     SELECT
 	  i.status,
 	  to_user.username AS toUsername,
-	  from_user AS fromUsername
+	  from_user.username AS fromUsername
     FROM invitation AS i
     JOIN users AS to_user ON i.to_id = to_user.id
-    JOIN users AS to_user ON i.from_id = to_user.id
+    JOIN users AS from_user ON i.from_id = from_user.id
     WHERE i.id = ?;
   `;
 
@@ -40,6 +38,7 @@ function checkCanAnswer(db: Database, username: string, challengeId: number) {
   }
 
   const { status, toUsername } = result;
+  console.log(result);
   if (status !== "pending") {
     throw Error("The challenge was answered.");
   }
