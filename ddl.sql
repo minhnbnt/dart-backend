@@ -39,6 +39,8 @@ END;
 CREATE TABLE IF NOT EXISTS match(
 	invitation_id INTEGER PRIMARY KEY,
 	played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	forfeited_by INTEGER DEFAULT NULL,
+
 	FOREIGN KEY (invitation_id) REFERENCES invitation(id)
 );
 
@@ -59,8 +61,6 @@ CREATE TABLE IF NOT EXISTS throw_attempt(
 	score INTEGER NOT NULL CHECK (score >= 0),
 
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-	forfeited_by INTEGER DEFAULT NULL,
 
 	PRIMARY KEY (match_id, player_id, attempt_number),
 
