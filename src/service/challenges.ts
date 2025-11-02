@@ -60,10 +60,7 @@ function onChallengeAccepted(invitation: Omit<Invitation, 'status'>) {
 		throw new Error("Replies can't be sent.");
 	}
 
-	// TODO: create new game
-
 	fromSocket.write(JSON.stringify({ event: 'startGame', body: { id } }));
-
 	fromSocket.write('\n');
 }
 
