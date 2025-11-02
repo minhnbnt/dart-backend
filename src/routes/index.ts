@@ -1,4 +1,5 @@
 import db from '../configs/database.ts';
+import { throwDart } from '../gameplay.ts';
 import type { Message } from '../schemas.ts';
 import { listOnlineUser } from '../service/socketMap.ts';
 import handleLogin from './login.ts';
@@ -32,6 +33,10 @@ async function handleCommand({ command, body }: Message, username?: string) {
 
 		case 'listOnline': {
 			return { ok: true, body: listOnlineUser().toArray() };
+		}
+
+		case 'throw': {
+			return throwDart(db, username, body);
 		}
 	}
 

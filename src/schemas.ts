@@ -20,7 +20,13 @@ export const challengeAnswerSchema = z.object({
 	newStatus: z.enum(['accepted', 'declined']),
 });
 
+export const throwRequestSchema = z.object({
+	matchId: z.int(),
+	score: z.int().min(0, { message: 'Value must be a non-negative integer' }),
+});
+
 export const registerSchema = loginSchema;
 
+export type ThrowRequest = z.infer<typeof throwRequestSchema>;
 export type Message = z.infer<typeof messageSchema>;
 export type RegisterPayload = z.infer<typeof registerSchema>;

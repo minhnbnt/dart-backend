@@ -22,13 +22,7 @@ async function handleLogin(db: Database, payload: object) {
 		};
 	}
 
-	let token = `${username}:${password}`;
-	token = Buffer.from(token, 'utf8').toString('base64');
-
-	return {
-		ok: true,
-		body: { username, token },
-	};
+	return { ok: true };
 }
 
 export default handleLogin;

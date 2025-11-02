@@ -32,10 +32,7 @@ export function answerChallenge(db: Database, username: string, body: object) {
 		throw err;
 	}
 
-	return {
-		ok: true,
-		// TODO: Add message if needed
-	};
+	return { ok: true };
 }
 
 export function sendChallenge(db: Database, from: string, message: object) {
