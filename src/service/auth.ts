@@ -6,7 +6,7 @@ type UserRow = {
 	password_hash: string;
 };
 
-async function updateLastOnline(db: Database, username: string) {
+export function updateLastOnline(db: Database, username: string) {
 	const statement = db.prepare(
 		'UPDATE users SET last_online = CURRENT_TIMESTAMP WHERE username = ?',
 	);

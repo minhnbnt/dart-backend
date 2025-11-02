@@ -77,3 +77,71 @@ export function throwDart(db: Database, username: string, body: object) {
 
 	return { ok: true };
 }
+
+type PlayingMatch = {
+	matchId: number;
+	fromUsername: string;
+	toUserName: string;
+};
+
+export function getPlayingMatch(db: Database, username: string) {
+	const query = `
+		SELECT 
+			m.id AS matchId,
+			u1.username AS fromUsername,
+			u2.username AS toUserName
+		FROM match m
+		JOIN invitation i ON m.invitation_id = i.id
+		JOIN users u1 ON i.from_id = u1.id
+		JOIN users u2 ON i.to_id = u2.id
+		WHERE (i.from_id = ? OR i.to_id = ?)
+		  AND m.forfeited_by IS NULL
+		  AND EXISTS (
+			  SELECT 1
+			  FROM throw_attempt t
+			  JOIN users u ON t.player_id = u.id
+			  WHERE t.match_id = m.id
+			    AND u.username = ?
+			  GROUP BY t.player_id
+			  HAVING COUNT(t.attempt_number) < 3
+		  );
+	`;
+
+	const result = db.prepare(query).get(username, username);
+	if (!result) {
+		return undefined;
+	}
+
+	return result as PlayingMatch;
+}
+
+export function isPlayerInMatch(db: Database, username: string) {
+	return getPlayingMatch(db, username) !== undefined;
+}
+
+export function onPlayerForfeited(
+	db: Database,
+	username: string,
+	match: PlayingMatch,
+) {
+	const { matchId, fromUsername, toUserName } = match;
+
+	const query = `
+		UPDATE match
+		SET forfeited_by = (SELECT id FROM users WHERE username = ?)
+		WHERE id = ?;
+	`;
+
+	db.prepare(query).run(username, matchId);
+
+	const otherUsername = username === fromUsername ? toUserName : fromUsername;
+
+	const otherPlayerSocket = getSocketFromUsername(otherUsername);
+	if (otherPlayerSocket) {
+		otherPlayerSocket.write(
+			JSON.stringify({ event: 'playerForfeited', body: { matchId, username } }),
+		);
+
+		otherPlayerSocket.write('\n');
+	}
+}

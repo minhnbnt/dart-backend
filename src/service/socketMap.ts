@@ -1,5 +1,10 @@
 import { Socket } from 'net';
 
+import db from '../configs/database.ts';
+import { updateLastOnline } from './auth.ts';
+import { getPlayingMatch, onPlayerForfeited } from './gameplay.ts';
+import { rejectAllChallenge } from './challenges.ts';
+
 const socketMap = new Map<string, Socket>();
 
 export function sendToAll(message: object, excluded?: Set<string>) {
@@ -36,12 +41,16 @@ export function isUserOnline(username: string) {
 export function onUserLogout(username: string) {
 	socketMap.delete(username);
 
-	// TODO: Check if is in match
-	// TODO: Update last online
-	// TODO: Denice all pending request
+	sendToAll({ event: 'userOffline', body: { username } });
 
-	const message = { event: 'userOffline', body: { username } };
-	sendToAll(message);
+	const playingMatch = getPlayingMatch(db, username);
+	if (playingMatch) {
+		onPlayerForfeited(db, username, playingMatch);
+	}
+
+	rejectAllChallenge(db, username);
+
+	updateLastOnline(db, username);
 }
 
 export function getSocketFromUsername(username: string) {

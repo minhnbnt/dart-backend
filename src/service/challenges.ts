@@ -52,8 +52,11 @@ function checkCanAnswer(db: Database, username: string, challengeId: number) {
 
 type AnswerStatus = 'accepted' | 'declined';
 
-function onChallengeAccepted(invitation: Omit<Invitation, 'status'>) {
-	const { id, fromUsername } = invitation;
+function onChallengeAccepted(
+	db: Database,
+	invitation: Omit<Invitation, 'status'>,
+) {
+	const { id, fromUsername, toUsername } = invitation;
 
 	const fromSocket = getSocketFromUsername(fromUsername);
 	if (fromSocket === undefined) {
@@ -62,6 +65,9 @@ function onChallengeAccepted(invitation: Omit<Invitation, 'status'>) {
 
 	fromSocket.write(JSON.stringify({ event: 'startGame', body: { id } }));
 	fromSocket.write('\n');
+
+	rejectAllChallenge(db, fromUsername);
+	rejectAllChallenge(db, toUsername);
 }
 
 function updateChallenge(
@@ -77,9 +83,56 @@ function updateChallenge(
 	}
 }
 
+function rejectAllChallenge(db: Database, username: string) {
+	const query = `
+		UPDATE invitation
+		SET status = 'declined'
+		WHERE status = 'pending'
+		  AND (
+			  from_id = (SELECT id FROM users WHERE username = ?)
+			  OR to_id = (SELECT id FROM users WHERE username = ?)
+		  )
+		RETURNING 
+			id,
+			(SELECT username FROM users WHERE id = from_id) AS fromUsername,
+			(SELECT username FROM users WHERE id = to_id) AS toUsername
+	`;
+
+	type Challenge = {
+		id: number;
+		fromUsername: string;
+		toUsername: string;
+	};
+
+	const affectedChallenges = db
+		.prepare(query)
+		.all(username, username) as Challenge[];
+
+	affectedChallenges.forEach((challenge) => {
+		const { id, fromUsername, toUsername } = challenge;
+
+		const isFrom = username === fromUsername;
+
+		const receiverUsername = isFrom ? toUsername : fromUsername;
+		const event = isFrom ? 'challengeCanceled' : 'challengeRejected';
+
+		const socket = getSocketFromUsername(receiverUsername);
+
+		if (socket === undefined) {
+			return;
+		}
+
+		const message = JSON.stringify({ event, body: { id } });
+
+		socket.write(message);
+		socket.write('\n');
+	});
+}
+
 export {
-	insertChallenge,
 	checkCanAnswer,
-	updateChallenge,
+	insertChallenge,
 	onChallengeAccepted,
+	rejectAllChallenge,
+	updateChallenge,
 };

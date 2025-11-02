@@ -8,6 +8,7 @@ import {
 	onChallengeAccepted,
 	updateChallenge,
 } from '../service/challenges.ts';
+import { isPlayerInMatch } from '../service/gameplay.ts';
 
 export function answerChallenge(db: Database, username: string, body: object) {
 	const { challengeId, newStatus } = challengeAnswerSchema.parse(body);
@@ -16,17 +17,14 @@ export function answerChallenge(db: Database, username: string, body: object) {
 		const challenge = checkCanAnswer(db, username, challengeId);
 		updateChallenge(db, challengeId, newStatus);
 		if (newStatus === 'accepted') {
-			onChallengeAccepted(challenge);
+			onChallengeAccepted(db, challenge);
 		}
 	} catch (err) {
 		if (
 			err instanceof Error &&
 			err.message.toLowerCase().includes('challenge')
 		) {
-			return {
-				ok: false,
-				message: err.message,
-			};
+			return { ok: false, message: err.message };
 		}
 
 		throw err;
@@ -53,6 +51,13 @@ export function sendChallenge(db: Database, from: string, message: object) {
 		return {
 			ok: false,
 			message: `"${to}" is not online right now.`,
+		};
+	}
+
+	if (isPlayerInMatch(db, to)) {
+		return {
+			ok: false,
+			message: 'The player is in match right now.',
 		};
 	}
 
