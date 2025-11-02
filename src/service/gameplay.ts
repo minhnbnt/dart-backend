@@ -71,6 +71,9 @@ function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
 
 export function throwDart(db: Database, username: string, body: object) {
 	const parsedBody = throwRequestSchema.parse(body);
+
 	writeAttempt(db, username, parsedBody);
 	sendToOther(db, username, parsedBody);
+
+	return { ok: true };
 }
