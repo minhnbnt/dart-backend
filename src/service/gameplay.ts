@@ -1,5 +1,5 @@
 import { type Database } from 'better-sqlite3';
-import { throwRequestSchema, type ThrowRequest } from '../schemas.ts';
+import { type ThrowRequest } from '../schemas.ts';
 import { getSocketFromUsername } from './socketMap.ts';
 
 function writeAttempt(db: Database, username: string, body: ThrowRequest) {
@@ -69,11 +69,13 @@ function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
 	otherPlayerSocket.write('\n');
 }
 
-export function throwDart(db: Database, username: string, body: object) {
-	const parsedBody = throwRequestSchema.parse(body);
-
-	writeAttempt(db, username, parsedBody);
-	sendToOther(db, username, parsedBody);
+export function onPlayerThrow(
+	db: Database,
+	username: string,
+	body: ThrowRequest,
+) {
+	writeAttempt(db, username, body);
+	sendToOther(db, username, body);
 
 	return { ok: true };
 }

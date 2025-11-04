@@ -1,6 +1,6 @@
 import db from '../configs/database.ts';
-import { throwDart } from '../gameplay.ts';
 import type { Message } from '../schemas.ts';
+import { throwDart } from './gameplay.ts';
 import { listOnlineUser } from '../service/socketMap.ts';
 import handleLogin from './login.ts';
 import { answerChallenge, sendChallenge } from './matchMaking.ts';
@@ -9,6 +9,8 @@ import handleRegister from './register.ts';
 async function handleCommand({ command, body }: Message, username?: string) {
 	if (command === 'login') {
 		return await handleLogin(db, body);
+	} else if (command === 'register') {
+		return await handleRegister(db, body);
 	}
 
 	if (username === undefined) {
@@ -19,10 +21,6 @@ async function handleCommand({ command, body }: Message, username?: string) {
 	}
 
 	switch (command) {
-		case 'register': {
-			return await handleRegister(db, body);
-		}
-
 		case 'challengePlayer': {
 			return sendChallenge(db, username, body);
 		}
