@@ -41,13 +41,9 @@ function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
 	const otherPlayerQuery = `
 		SELECT users.username AS otherUsername FROM users
 		WHERE users.username != ? AND id IN (
-			SELECT from_id FROM invitation WHERE id = (
-				SELECT invitation_id FROM match WHERE invitation_id = ?
-			)
+			SELECT from_id FROM invitation WHERE id = ?
 			UNION
-			SELECT to_id FROM invitation WHERE id = (
-				SELECT invitation_id FROM match WHERE invitation_id = ?
-			)
+			SELECT to_id FROM invitation WHERE id = ?
 		)
 		LIMIT 1;
 	`;

@@ -37,6 +37,7 @@ BEGIN
 END;
 
 CREATE TABLE IF NOT EXISTS match(
+
 	invitation_id INTEGER PRIMARY KEY,
 	played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	forfeited_by INTEGER DEFAULT NULL,
@@ -64,7 +65,7 @@ CREATE TABLE IF NOT EXISTS throw_attempt(
 
 	PRIMARY KEY (match_id, player_id, attempt_number),
 
-	FOREIGN KEY (match_id) REFERENCES match(id) ON DELETE CASCADE,
+	FOREIGN KEY (match_id) REFERENCES match(invitation_id) ON DELETE CASCADE,
 	FOREIGN KEY (player_id) REFERENCES users(id)
 );
 
@@ -72,13 +73,9 @@ CREATE TRIGGER IF NOT EXISTS validate_throw_player
 BEFORE INSERT ON throw_attempt
 FOR EACH ROW
 WHEN NEW.player_id NOT IN (
-	SELECT from_id FROM invitation WHERE invitation.id = (
-		SELECT invitation_id FROM match WHERE id = NEW.match_id
-	)
+	SELECT from_id FROM invitation WHERE invitation.id = NEW.match_id
 	UNION
-	SELECT to_id FROM invitation WHERE invitation.id = (
-		SELECT invitation_id FROM match WHERE id = NEW.match_id
-	)
+	SELECT to_id FROM invitation WHERE invitation.id = NEW.match_id
 )
 BEGIN
     SELECT RAISE(FAIL, 'Player not part of this match');
