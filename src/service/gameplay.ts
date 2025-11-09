@@ -9,9 +9,10 @@ function writeAttempt(db: Database, username: string, body: ThrowRequest) {
 		SELECT
 			u.id AS playerId,
 			COALESCE(MAX(ta.attempt_number), 0) + 1 AS nextAttempt
-		FROM throw_attempt ta
-		JOIN users u ON ta.player_id = u.id
-		WHERE ta.match_id = ? AND u.username = ?;
+		FROM users u
+		LEFT JOIN throw_attempt ta ON ta.player_id = u.id AND ta.match_id = ?
+		WHERE u.username = ?
+		GROUP BY u.id;
 	`;
 
 	const result = db.prepare(query).get(matchId, username) as any;
@@ -40,9 +41,13 @@ function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
 	const otherPlayerQuery = `
 		SELECT users.username AS otherUsername FROM users
 		WHERE users.username != ? AND id IN (
-			SELECT from_id FROM invitation WHERE id = ?
+			SELECT from_id FROM invitation WHERE id = (
+				SELECT invitation_id FROM match WHERE invitation_id = ?
+			)
 			UNION
-			SELECT to_id FROM invitation WHERE id = ?
+			SELECT to_id FROM invitation WHERE id = (
+				SELECT invitation_id FROM match WHERE invitation_id = ?
+			)
 		)
 		LIMIT 1;
 	`;
@@ -88,28 +93,28 @@ type PlayingMatch = {
 
 export function getPlayingMatch(db: Database, username: string) {
 	const query = `
-		SELECT 
-			m.id AS matchId,
+		SELECT
+			m.invitation_id AS matchId,
 			u1.username AS fromUsername,
 			u2.username AS toUserName
 		FROM match m
 		JOIN invitation i ON m.invitation_id = i.id
 		JOIN users u1 ON i.from_id = u1.id
 		JOIN users u2 ON i.to_id = u2.id
-		WHERE (i.from_id = ? OR i.to_id = ?)
+		WHERE (i.from_id IN (SELECT id FROM users WHERE username = ?)
+		    OR i.to_id IN (SELECT id FROM users WHERE username = ?))
 		  AND m.forfeited_by IS NULL
 		  AND EXISTS (
 			  SELECT 1
 			  FROM throw_attempt t
-			  JOIN users u ON t.player_id = u.id
-			  WHERE t.match_id = m.id
-			    AND u.username = ?
+			  WHERE t.match_id = m.invitation_id
+			    AND t.player_id IN (SELECT id FROM users WHERE username = ?)
 			  GROUP BY t.player_id
 			  HAVING COUNT(t.attempt_number) < 3
 		  );
 	`;
 
-	const result = db.prepare(query).get(username, username);
+	const result = db.prepare(query).get(username, username, username);
 	if (!result) {
 		return undefined;
 	}
@@ -131,7 +136,7 @@ export function onPlayerForfeited(
 	const query = `
 		UPDATE match
 		SET forfeited_by = (SELECT id FROM users WHERE username = ?)
-		WHERE id = ?;
+		WHERE invitation_id = ?;
 	`;
 
 	db.prepare(query).run(username, matchId);
