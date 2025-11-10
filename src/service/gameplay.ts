@@ -1,5 +1,5 @@
 import { type Database } from 'better-sqlite3';
-import { type ThrowRequest } from '../schemas.ts';
+import { type ThrowRequest, type SpinRequest } from '../schemas.ts';
 import { getSocketFromUsername } from './socketMap.ts';
 
 function writeAttempt(db: Database, username: string, body: ThrowRequest) {
@@ -36,7 +36,7 @@ function writeAttempt(db: Database, username: string, body: ThrowRequest) {
 }
 
 function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
-	const { score, matchId } = body;
+	const { score, matchId, dx, dy, rotationAngle } = body;
 
 	const otherPlayerQuery = `
 		SELECT users.username AS otherUsername FROM users
@@ -64,7 +64,10 @@ function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
 	}
 
 	otherPlayerSocket.write(
-		JSON.stringify({ event: 'otherThrew', body: { score } }),
+		JSON.stringify({
+			event: 'otherThrew',
+			body: { score, dx, dy, rotationAngle },
+		}),
 	);
 
 	otherPlayerSocket.write('\n');
@@ -77,6 +80,50 @@ export function onPlayerThrow(
 ) {
 	writeAttempt(db, username, body);
 	sendToOther(db, username, body);
+
+	return { ok: true };
+}
+
+export function onPlayerSpin(
+	db: Database,
+	username: string,
+	body: SpinRequest,
+) {
+	const { matchId, rotationAmount, duration } = body;
+
+	const otherPlayerQuery = `
+		SELECT users.username AS otherUsername FROM users
+		WHERE users.username != ? AND id IN (
+			SELECT from_id FROM invitation WHERE id = ?
+			UNION
+			SELECT to_id FROM invitation WHERE id = ?
+		)
+		LIMIT 1;
+	`;
+
+	const otherPlayerResult = db
+		.prepare(otherPlayerQuery)
+		.get(username, matchId, matchId);
+
+	if (!otherPlayerResult) {
+		throw new Error('Other player does not found.');
+	}
+
+	const { otherUsername } = otherPlayerResult as any;
+	const otherPlayerSocket = getSocketFromUsername(otherUsername);
+
+	if (!otherPlayerSocket) {
+		throw new Error("Other player's socket does not found.");
+	}
+
+	otherPlayerSocket.write(
+		JSON.stringify({
+			event: 'opponentSpin',
+			body: { rotationAmount, duration },
+		}),
+	);
+
+	otherPlayerSocket.write('\n');
 
 	return { ok: true };
 }

@@ -23,10 +23,20 @@ export const challengeAnswerSchema = z.object({
 export const throwRequestSchema = z.object({
 	matchId: z.int(),
 	score: z.int().min(0, { message: 'Value must be a non-negative integer' }),
+	dx: z.number().optional(),
+	dy: z.number().optional(),
+	rotationAngle: z.number().optional(),
+});
+
+export const spinRequestSchema = z.object({
+	matchId: z.int(),
+	rotationAmount: z.number().min(0),
+	duration: z.number().min(0),
 });
 
 export const registerSchema = loginSchema;
 
 export type ThrowRequest = z.infer<typeof throwRequestSchema>;
+export type SpinRequest = z.infer<typeof spinRequestSchema>;
 export type Message = z.infer<typeof messageSchema>;
 export type RegisterPayload = z.infer<typeof registerSchema>;

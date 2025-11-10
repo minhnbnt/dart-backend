@@ -23,6 +23,7 @@ function insertChallenge(db: Database, from: string, to: string) {
 function checkCanAnswer(db: Database, username: string, challengeId: number) {
 	const query = `
 		SELECT
+			i.id,
 			i.status,
 			to_user.username AS toUsername,
 			from_user.username AS fromUsername
@@ -59,12 +60,17 @@ function onChallengeAccepted(
 	const { id, fromUsername, toUsername } = invitation;
 
 	const fromSocket = getSocketFromUsername(fromUsername);
-	if (fromSocket === undefined) {
+	const toSocket = getSocketFromUsername(toUsername);
+
+	if (fromSocket === undefined || toSocket === undefined) {
 		throw new Error("Replies can't be sent.");
 	}
 
-	fromSocket.write(JSON.stringify({ event: 'startGame', body: { id } }));
-	fromSocket.write('\n');
+	const startGameMessage =
+		JSON.stringify({ event: 'startGame', body: { id } }) + '\n';
+
+	fromSocket.write(startGameMessage);
+	toSocket.write(startGameMessage);
 
 	rejectAllChallenge(db, fromUsername);
 	rejectAllChallenge(db, toUsername);
@@ -92,7 +98,7 @@ function rejectAllChallenge(db: Database, username: string) {
 			  from_id = (SELECT id FROM users WHERE username = ?)
 			  OR to_id = (SELECT id FROM users WHERE username = ?)
 		  )
-		RETURNING 
+		RETURNING
 			id,
 			(SELECT username FROM users WHERE id = from_id) AS fromUsername,
 			(SELECT username FROM users WHERE id = to_id) AS toUsername
