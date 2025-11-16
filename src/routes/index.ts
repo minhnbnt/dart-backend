@@ -1,6 +1,6 @@
 import db from '../configs/database.ts';
 import type { Message } from '../schemas.ts';
-import { throwDart, spinDartboard } from './gameplay.ts';
+import { throwDart, spinDartboard, forfeitMatch } from './gameplay.ts';
 import { listOnlineUser } from '../service/socketMap.ts';
 import handleLogin from './login.ts';
 import { answerChallenge, sendChallenge } from './matchMaking.ts';
@@ -39,6 +39,10 @@ async function handleCommand({ command, body }: Message, username?: string) {
 
 		case 'spin': {
 			return spinDartboard(db, username, body);
+		}
+
+		case 'forfeit': {
+			return forfeitMatch(db, username);
 		}
 	}
 

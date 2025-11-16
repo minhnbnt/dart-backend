@@ -2,9 +2,24 @@ import { type Database } from 'better-sqlite3';
 import { type ThrowRequest, type SpinRequest } from '../schemas.ts';
 import { getSocketFromUsername } from './socketMap.ts';
 
-function writeAttempt(db: Database, username: string, body: ThrowRequest) {
-	const { matchId, score } = body;
+function getOtherPlayerSocket(username: string, match: PlayingMatch) {
+	const { fromUsername, toUserName } = match;
+	const otherUsername = username === fromUsername ? toUserName : fromUsername;
+	const otherPlayerSocket = getSocketFromUsername(otherUsername);
 
+	if (!otherPlayerSocket) {
+		throw new Error(`Other player's socket does not found.`);
+	}
+
+	return otherPlayerSocket;
+}
+
+function writeAttempt(
+	db: Database,
+	username: string,
+	{ matchId }: PlayingMatch,
+	{ score }: ThrowRequest,
+) {
 	const query = `
 		SELECT
 			u.id AS playerId,
@@ -35,33 +50,14 @@ function writeAttempt(db: Database, username: string, body: ThrowRequest) {
 	db.prepare(insertQuery).run(matchId, playerId, nextAttempt, score);
 }
 
-function sendToOther(db: Database, fromUsername: string, body: ThrowRequest) {
-	const { score, matchId, dx, dy, rotationAngle } = body;
+function sendToOther(
+	username: string,
+	match: PlayingMatch,
+	body: ThrowRequest,
+) {
+	const { score, dx, dy, rotationAngle } = body;
 
-	const otherPlayerQuery = `
-		SELECT users.username AS otherUsername FROM users
-		WHERE users.username != ? AND id IN (
-			SELECT from_id FROM invitation WHERE id = ?
-			UNION
-			SELECT to_id FROM invitation WHERE id = ?
-		)
-		LIMIT 1;
-	`;
-
-	const otherPlayerResult = db
-		.prepare(otherPlayerQuery)
-		.get(fromUsername, matchId, matchId);
-
-	if (!otherPlayerResult) {
-		throw new Error('Other player does not found.');
-	}
-
-	const { otherUsername } = otherPlayerResult as any;
-	const otherPlayerSocket = getSocketFromUsername(otherUsername);
-
-	if (!otherPlayerSocket) {
-		throw new Error("Other player's socket does not found.");
-	}
+	const otherPlayerSocket = getOtherPlayerSocket(username, match);
 
 	otherPlayerSocket.write(
 		JSON.stringify({
@@ -78,8 +74,13 @@ export function onPlayerThrow(
 	username: string,
 	body: ThrowRequest,
 ) {
-	writeAttempt(db, username, body);
-	sendToOther(db, username, body);
+	const match = getPlayingMatch(db, username);
+	if (!match) {
+		throw new Error(`No active match found for player ${username}`);
+	}
+
+	writeAttempt(db, username, match, body);
+	sendToOther(username, match, body);
 
 	return { ok: true };
 }
@@ -89,32 +90,14 @@ export function onPlayerSpin(
 	username: string,
 	body: SpinRequest,
 ) {
-	const { matchId, rotationAmount, duration } = body;
+	const { rotationAmount, duration } = body;
 
-	const otherPlayerQuery = `
-		SELECT users.username AS otherUsername FROM users
-		WHERE users.username != ? AND id IN (
-			SELECT from_id FROM invitation WHERE id = ?
-			UNION
-			SELECT to_id FROM invitation WHERE id = ?
-		)
-		LIMIT 1;
-	`;
-
-	const otherPlayerResult = db
-		.prepare(otherPlayerQuery)
-		.get(username, matchId, matchId);
-
-	if (!otherPlayerResult) {
-		throw new Error('Other player does not found.');
+	const match = getPlayingMatch(db, username);
+	if (!match) {
+		throw new Error(`No active match found for player ${username}`);
 	}
 
-	const { otherUsername } = otherPlayerResult as any;
-	const otherPlayerSocket = getSocketFromUsername(otherUsername);
-
-	if (!otherPlayerSocket) {
-		throw new Error("Other player's socket does not found.");
-	}
+	const otherPlayerSocket = getOtherPlayerSocket(username, match);
 
 	otherPlayerSocket.write(
 		JSON.stringify({
@@ -151,7 +134,7 @@ export function getPlayingMatch(db: Database, username: string) {
 			  SELECT 1
 			  FROM throw_attempt t
 			  WHERE t.match_id = m.invitation_id
-			    AND t.player_id IN (SELECT id FROM users WHERE username = ?)
+		        AND t.player_id IN (SELECT id FROM users WHERE username = ?)
 			  GROUP BY t.player_id
 			  HAVING COUNT(t.attempt_number) < 3
 		  );
@@ -174,7 +157,7 @@ export function onPlayerForfeited(
 	username: string,
 	match: PlayingMatch,
 ) {
-	const { matchId, fromUsername, toUserName } = match;
+	const { matchId } = match;
 
 	const query = `
 		UPDATE match
@@ -184,14 +167,14 @@ export function onPlayerForfeited(
 
 	db.prepare(query).run(username, matchId);
 
-	const otherUsername = username === fromUsername ? toUserName : fromUsername;
-
-	const otherPlayerSocket = getSocketFromUsername(otherUsername);
-	if (otherPlayerSocket) {
+	try {
+		const otherPlayerSocket = getOtherPlayerSocket(username, match);
 		otherPlayerSocket.write(
 			JSON.stringify({ event: 'playerForfeited', body: { matchId, username } }),
 		);
 
 		otherPlayerSocket.write('\n');
+	} catch (error) {
+		// Other player is offline, that's ok
 	}
 }
